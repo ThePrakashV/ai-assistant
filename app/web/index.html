@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1419">
+<title>Nova</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1 id="title">Nova</h1>
+  <span class="pill" id="status">connecting...</span>
+  <button id="install" type="button" hidden>Install</button>
+  <button id="settings-btn" type="button" aria-label="Settings">&#9881;</button>
+</header>
+
+<main id="chat" aria-live="polite"></main>
+
+<div id="meter"><div id="meter-fill"></div></div>
+
+<div class="options">
+  <label><input type="checkbox" id="voice" checked> Voice reply</label>
+  <button id="reset" type="button" class="link">Clear memory of this chat</button>
+</div>
+
+<form id="form" autocomplete="off">
+  <input id="text" type="text" placeholder="Type pannu, illa mic click pannu..." maxlength="1000" disabled>
+  <button id="send" type="submit" aria-label="Send" disabled>&#10148;</button>
+  <button id="mic" type="button" aria-label="Talk" disabled>&#127908;</button>
+</form>
+
+<dialog id="dialog">
+  <p>Server token (API_TOKEN). Token illa na kaali vidu.</p>
+  <input id="token" type="password" placeholder="token" autocomplete="off">
+  <div class="dialog-actions">
+    <button id="cancel-token" type="button">Cancel</button>
+    <button id="save-token" type="button">Save</button>
+  </div>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

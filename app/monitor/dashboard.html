@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova Monitor</title>
+<style>
+  :root {
+    --bg: #0f1419; --card: #171d26; --text: #e6edf3; --muted: #8b98a5;
+    --green: #2ecc71; --yellow: #f1c40f; --red: #e74c3c; --blue: #3498db; --grey: #7f8c8d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", Arial, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #222b36; }
+  header h1 { font-size: 20px; margin: 0; margin-right: auto; }
+  .pill { background: var(--card); border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--muted); }
+  .pill.ok { color: var(--green); } .pill.warn { color: var(--yellow); } .pill.bad { color: var(--red); }
+  button { background: var(--card); color: var(--text); border: 1px solid #2a3441; border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  button:hover { border-color: var(--blue); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 14px 20px 0; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px 14px; }
+  .card .label { color: var(--muted); font-size: 12px; }
+  .card .value { font-size: 26px; font-weight: 600; margin-top: 4px; }
+  .grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; padding: 12px 20px 0; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 12px 20px 0; }
+  .panel { background: var(--card); border-radius: 10px; padding: 4px; min-width: 0; }
+  section.tasks { padding: 12px 20px 30px; }
+  section.tasks h2 { font-size: 16px; color: var(--muted); margin: 8px 0; }
+  .task { background: var(--card); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+  .task-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .task-head .text { font-weight: 600; flex: 1; min-width: 200px; }
+  .badge { border-radius: 4px; padding: 2px 8px; font-size: 11px; text-transform: uppercase; font-weight: 600; color: #0f1419; }
+  .badge.done { background: var(--green); } .badge.running, .badge.planning { background: var(--yellow); }
+  .badge.failed { background: var(--red); } .badge.partial { background: #e67e22; } .badge.pending { background: var(--grey); }
+  .meta { color: var(--muted); font-size: 12px; }
+  .steps { margin: 8px 0 0 4px; border-left: 2px solid #2a3441; padding-left: 12px; }
+  .step { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; padding: 3px 0; font-size: 13px; }
+  .step .route { color: var(--blue); min-width: 150px; }
+  .step .reply { color: var(--muted); flex: 1; min-width: 200px; }
+  .reply-final { margin-top: 6px; font-size: 13px; color: var(--text); }
+  @media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nova Live Monitor</h1>
+  <span class="pill" id="conn">connecting...</span>
+  <span class="pill" id="store">store</span>
+  <span class="pill" id="ollama">ollama</span>
+  <button onclick="clearTasks()">Clear tasks</button>
+</header>
+
+<div class="cards">
+  <div class="card"><div class="label">Total tasks</div><div class="value" id="c-total">0</div></div>
+  <div class="card"><div class="label">Success rate</div><div class="value" id="c-rate">-</div></div>
+  <div class="card"><div class="label">Running now</div><div class="value" id="c-running">0</div></div>
+  <div class="card"><div class="label">Avg task time</div><div class="value" id="c-avg">-</div></div>
+  <div class="card"><div class="label">RAM</div><div class="value" id="c-ram">-</div></div>
+</div>
+
+<div class="grid2">
+  <div class="panel"><div id="timeline"></div></div>
+  <div class="panel"><div id="usage"></div></div>
+</div>
+<div class="grid3">
+  <div class="panel"><div id="latency"></div></div>
+  <div class="panel"><div id="ram"></div></div>
+  <div class="panel"><div id="cpu"></div></div>
+</div>
+
+<section class="tasks">
+  <h2>Recent tasks</h2>
+  <div id="tasks"></div>
+</section>
+
+<script src="/dashboard/plotly.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const PLOT_CONFIG = { displayModeBar: false, responsive: true };
+
+  function fmtMs(ms) {
+    if (ms === null || ms === undefined) return "-";
+    return ms < 1000 ? Math.round(ms) + " ms" : (ms / 1000).toFixed(1) + " s";
+  }
+
+  // innerHTML use pannala, textContent mattum (user sonna text la HTML irundhaalum safe)
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+
+  function renderPlots(figures) {
+    for (const name of ["timeline", "usage", "latency", "ram", "cpu"]) {
+      const fig = figures[name];
+      Plotly.react(name, fig.data, fig.layout, PLOT_CONFIG);
+    }
+  }
+
+  function renderTasks(tasks) {
+    const box = $("tasks");
+    box.replaceChildren();
+    if (!tasks.length) {
+      box.appendChild(el("div", "meta", "Innum tasks illa. scripts\\test_orchestrator.py run pannu."));
+      return;
+    }
+    for (const task of tasks) {
+      const card = el("div", "task");
+      const head = el("div", "task-head");
+      head.appendChild(el("span", "badge " + task.status, task.status));
+      head.appendChild(el("span", "text", task.text));
+      const time = new Date(task.created * 1000).toLocaleTimeString();
+      head.appendChild(el("span", "meta", `#${task.id} | ${task.source} | ${time} | ${fmtMs(task.duration_ms)} | plan ${task.plan_ms} ms`));
+      card.appendChild(head);
+
+      const steps = el("div", "steps");
+      for (const step of task.steps) {
+        const row = el("div", "step");
+        row.appendChild(el("span", "badge " + step.status, step.status));
+        row.appendChild(el("span", "route", `${step.index}. ${step.route || "..."}`));
+        row.appendChild(el("span", "meta", fmtMs(step.duration_ms) + (step.retries ? ` (retry ${step.retries})` : "")));
+        row.appendChild(el("span", "reply", step.reply ? `${step.text}  ->  ${step.reply.slice(0, 140)}` : step.text));
+        steps.appendChild(row);
+      }
+      card.appendChild(steps);
+      if (task.steps.length > 1 && task.reply) {
+        card.appendChild(el("div", "reply-final", "Final: " + task.reply.slice(0, 300)));
+      }
+      box.appendChild(card);
+    }
+  }
+
+  function renderHeader(data) {
+    const s = data.summary;
+    $("c-total").textContent = s.total;
+    $("c-rate").textContent = s.success_rate === null ? "-" : s.success_rate + "%";
+    $("c-running").textContent = s.running;
+    $("c-avg").textContent = fmtMs(s.avg_task_ms);
+    $("c-ram").textContent = `${data.stats.ram_used_gb} / ${data.stats.ram_total_gb} GB`;
+
+    const store = $("store");
+    store.textContent = "store: " + data.health.store;
+    store.className = "pill " + (data.health.store === "redis" ? "ok" : "warn");
+
+    const ollama = $("ollama");
+    const o = data.health.ollama;
+    ollama.textContent = o.ok
+      ? "ollama: " + (o.models.length ? o.models.map(m => `${m.name} (${m.size_gb} GB)`).join(", ") : "idle")
+      : "ollama: down";
+    ollama.className = "pill " + (o.ok ? "ok" : "bad");
+  }
+
+  async function tick() {
+    try {
+      const response = await fetch("/api/monitor");
+      const data = await response.json();
+      renderHeader(data);
+      renderPlots(data.figures);
+      renderTasks(data.tasks);
+      $("conn").textContent = "live";
+      $("conn").className = "pill ok";
+    } catch (error) {
+      $("conn").textContent = "offline";
+      $("conn").className = "pill bad";
+    }
+  }
+
+  async function clearTasks() {
+    await fetch("/api/tasks/clear", { method: "POST" });
+    tick();
+  }
+
+  tick();
+  setInterval(tick, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+import os
+from pathlib import Path
+
+from cryptography.fernet import Fernet, InvalidToken
+
+from app.core.config import settings
+
+MAGIC = b"NOVAENC1"   # encrypted file oda sticker
+TEXT_PREFIX = "enc:"  # Redis la encrypted text oda sticker
+
+_fernet: Fernet | None = None
+
+
+class DataKeyError(RuntimeError):
+    """Encrypted data ah open panna mudiyala (key thappu illa key file illa)."""
+
+
+def _get_fernet() -> Fernet:
+    """Key file irundha adhai load pannum. Illana puthu key create pannum."""
+    global _fernet
+    if _fernet is not None:
+        return _fernet
+
+    key_path = Path(settings.data_key_file)
+    if key_path.exists():
+        key = key_path.read_bytes().strip()
+    else:
+        key_path.parent.mkdir(parents=True, exist_ok=True)
+        key = Fernet.generate_key()
+        key_path.write_bytes(key)
+        print(f"[Security] Puthu encryption key create aachu: {key_path}")
+        print("[Security] Indha key file ah BACKUP edunga. Key poiduchu na data thirumba kedaikaadhu!")
+
+    try:
+        _fernet = Fernet(key)
+    except ValueError as exc:
+        raise DataKeyError(f"Key file ({key_path}) la irukkura key sariya illa.") from exc
+    return _fernet
+
+
+# ---------- Files ----------
+def is_encrypted(path: str | Path) -> bool:
+    path = Path(path)
+    if not path.exists():
+        return False
+    with path.open("rb") as handle:
+        return handle.read(len(MAGIC)) == MAGIC
+
+
+def read_file(path: str | Path) -> bytes:
+    """Encrypted file na decrypt pannum. Pazhaya plain file na appadiye return pannum."""
+    raw = Path(path).read_bytes()
+    if not raw.startswith(MAGIC):
+        return raw
+    try:
+        return _get_fernet().decrypt(raw[len(MAGIC):])
+    except InvalidToken as exc:
+        raise DataKeyError(
+            f"'{path}' ah decrypt panna mudiyala. Key thappu irukkalam. "
+            f"Original key file ah ({settings.data_key_file}) thirumba vainga."
+        ) from exc
+
+
+def write_file(path: str | Path, data: bytes) -> None:
+    """Encrypt panni save pannum. Temp file la ezhudhi appuram maathuvom (paadhi file aagaadhu)."""
+    path = Path(path)
+    payload = (MAGIC + _get_fernet().encrypt(data)) if settings.encrypt_at_rest else data
+    tmp_path = path.with_name(path.name + ".tmp")
+    tmp_path.write_bytes(payload)
+    os.replace(tmp_path, path)
+
+
+# ---------- Text (Redis ku) ----------
+def encrypt_text(text: str) -> str:
+    if not settings.encrypt_at_rest:
+        return text
+    token = _get_fernet().encrypt(text.encode("utf-8")).decode("ascii")
+    return TEXT_PREFIX + token
+
+
+def decrypt_text(value: str) -> str:
+    """'enc:' sticker irundha decrypt pannum. Illana pazhaya plain text, appadiye return."""
+    if not value.startswith(TEXT_PREFIX):
+        return value
+    try:
+        return _get_fernet().decrypt(value[len(TEXT_PREFIX):].encode("ascii")).decode("utf-8")
+    except InvalidToken as exc:
+        raise DataKeyError("Chat history decrypt aagala. Key thappu irukkalam.") from exc

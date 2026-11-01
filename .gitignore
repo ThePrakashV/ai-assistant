@@ -1,0 +1,30 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.log
+
+# Secrets + personal data (ethaiyum push pannaadha)
+.env
+data/
+data-backup/
+certs/
+*.pem
+*.key
+
+# Big downloads (README la download commands irukku)
+models/
+mlruns/
+
+# Editors
+.vscode/
+.idea/
+
+# Electron
+node_modules/
+clients/desktop/dist/
+
+# Temp
+*.tmp
+*.part

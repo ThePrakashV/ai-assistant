@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1419">
+<title>Nova Privacy</title>
+<link rel="icon" href="/static/icons/icon-192.png">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/privacy.css">
+</head>
+<body class="page">
+<header>
+  <h1>Privacy &amp; Security</h1>
+  <span class="pill" id="status">loading...</span>
+  <a class="pill" href="/">Back to Nova</a>
+</header>
+
+<main class="wrap">
+  <section class="panel">
+    <h2>Nova store panra data</h2>
+    <table id="inventory">
+      <thead><tr><th>Data</th><th>Count</th><th>Enga</th><th>Protection</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Security status</h2>
+    <ul id="security"></ul>
+    <label class="row"><input type="checkbox" id="offline"> Offline mode (weather, currency, search off)</label>
+  </section>
+
+  <section class="panel">
+    <h2>Un data</h2>
+    <p class="note">Export file la un facts, chat history, reminders ellam plain ah irukkum (voiceprint embedding export aagaadhu). Safe idathula vechuko.</p>
+    <button id="export" type="button">Export my data (JSON)</button>
+  </section>
+
+  <section class="panel danger">
+    <h2>Data delete</h2>
+    <div id="scopes">
+      <label class="row"><input type="checkbox" value="facts"> Long-term facts</label>
+      <label class="row"><input type="checkbox" value="documents"> Document chunks (RAG)</label>
+      <label class="row"><input type="checkbox" value="history"> Chat history</label>
+      <label class="row"><input type="checkbox" value="tasks"> Task records</label>
+      <label class="row"><input type="checkbox" value="scheduler"> Timers / reminders / alarms</label>
+      <label class="row"><input type="checkbox" value="voiceprint"> Voiceprint (delete pannina thirumba enroll pannanum)</label>
+      <label class="row"><input type="checkbox" value="all"> <b>Ellaathaiyum (voiceprint kooda)</b></label>
+    </div>
+    <p class="note">Confirm panna <b>DELETE</b> nu type pannu. Idha thirumba mudiyaadhu. (Audit log delete aagaadhu.)</p>
+    <input id="confirm" type="text" placeholder="DELETE" autocomplete="off">
+    <button id="delete" type="button" class="warn">Delete selected</button>
+    <p id="delete-result" class="note"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Audit log</h2>
+    <div class="row">
+      <button id="verify" type="button">Verify integrity</button>
+      <button id="refresh" type="button">Refresh</button>
+      <span id="verify-result" class="note"></span>
+    </div>
+    <pre id="audit"></pre>
+  </section>
+</main>
+
+<script src="/static/privacy.js"></script>
+</body>
+</html>

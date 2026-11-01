@@ -1,0 +1,48 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+httpx==0.27.2
+ollama==0.3.3
+
+# Phase 3 (Voice Input)
+# NOTE: torch + torchaudio ah separate ah install pannanum (CPU index url la irundhu):
+# pip install torch==2.4.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+numpy==1.26.4
+faster-whisper==1.0.3
+sounddevice==0.5.0
+silero-vad==5.1.2
+
+# Phase 4 (Voice Output)
+piper-tts>=1.3,<2
+
+# Phase 5 (Wake Word)
+openwakeword==0.6.0
+
+# Phase 6 (NLU)
+sentence-transformers==3.1.1
+transformers==4.44.2
+
+# Phase 7 (Memory + RAG)
+redis==5.0.8
+faiss-cpu==1.8.0.post1
+
+# Phase 8 (Agents + Skills)
+langgraph>=1.0,<2
+dateparser==1.2.0
+
+# Phase 9 (Orchestration + Monitoring)
+psutil==6.0.0
+plotly==5.24.1
+
+# Phase 10 (Tracking)
+# mlflow-skinny = chinna client mattum. Full MLflow server Docker la irukku, so host la heavy install thevai illa
+mlflow-skinny==3.10.1
+
+# Phase 12 (Security)
+cryptography>=43,<47
+keyring>=25,<26
+
+# Phase 13 (Voice biometrics): torchaudio (fbank) + onnxruntime (model). Puthu heavy library illa
+onnxruntime>=1.17,<2

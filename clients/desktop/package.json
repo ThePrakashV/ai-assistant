@@ -1,0 +1,12 @@
+{
+  "name": "nova-desktop",
+  "version": "0.1.0",
+  "description": "Nova assistant desktop shell",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

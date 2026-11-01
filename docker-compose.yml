@@ -1,0 +1,63 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6380:6379"        # host 6380 -> container 6379 (6379 la pazhaya Redis irukku)
+    volumes:
+      - redis-data:/data
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.10.1
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --workers 1
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --allowed-hosts "*"
+      --cors-allowed-origins "*"
+    environment:
+      MLFLOW_SERVER_ENABLE_JOB_EXECUTION: "false"   # background huey consumers vendaam (RAM save)
+    ports:
+      - "127.0.0.1:5001:5000"        # host 5001 -> container 5000
+    volumes:
+      - mlflow-data:/mlflow
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  monitor:
+    build: .
+    ports:
+      - "127.0.0.1:8001:8000"        # host 8001 -> container 8000
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  mlflow-data:
